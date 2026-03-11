@@ -108,16 +108,16 @@ Question:
 
 
 # -------- CHAT LOOP --------
+if __name__ == "__main__":
+    while True:
 
-while True:
+        q = input("User: ")
 
-    q = input("User: ")
+        if q.lower() == "exit":
+            break
 
-    if q.lower() == "exit":
-        break
+        answer = ask(q)
 
-    answer = ask(q)
-
-    print("Bot:", answer)
+        print("Bot:", answer)
 
 # %%

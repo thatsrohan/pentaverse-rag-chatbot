@@ -8,7 +8,7 @@ app = FastAPI()
 class Query(BaseModel):
     question: str
 
-app.post("/chat")
+@app.post("/chat")
 def chat(query: Query):
 
     return ask(query.question)

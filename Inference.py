@@ -2,12 +2,15 @@
 import os
 from dotenv import load_dotenv
 import google.generativeai as genai
+import numpy as np
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
-from langchain_community.embeddings import HuggingFaceEmbeddings
-RELEVANT_CHUNKS=5
+from langchain_core.documents import Document
+from langchain.embeddings.base import Embeddings
+
+RELEVANT_CHUNKS = 5
 
 # -------- LOADING ENV VARIABLES --------
 
@@ -17,13 +20,34 @@ genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 model = genai.GenerativeModel("models/gemini-2.5-flash-lite")
 
+# -------- GEMINI EMBEDDING WRAPPER --------
 
-# -------- EMBEDDING MODEL --------
+class GeminiEmbeddings(Embeddings):
 
-embedding_model = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
-)
+    def embed_documents(self, texts):
 
+        vectors = []
+
+        for text in texts:
+            result = genai.embed_content(
+                model="models/gemini-embedding-001",
+                content=text
+            )
+            vectors.append(result["embedding"])
+
+        return vectors
+
+    def embed_query(self, text):
+
+        result = genai.embed_content(
+            model="models/gemini-embedding-001",
+            content=text
+        )
+
+        return result["embedding"]
+
+
+embedding_model = GeminiEmbeddings()
 
 # -------- LOADING OR CREATING VECTOR DATABASE --------
 
@@ -68,19 +92,15 @@ else:
 
     print("FAISS index saved!")
 
-
 # -------- CHAT FUNCTION --------
 
 def ask(question):
 
-    results = vectorstore.max_marginal_relevance_search(question, k=RELEVANT_CHUNKS) #List of LangChain Document objects
+    results = vectorstore.max_marginal_relevance_search(question, k=RELEVANT_CHUNKS)
 
-# Extracting the text (page_content) from each retrieved Document 
-#and combine them into a single context string separated by new lines to send to the LLM
+    context = "\n".join([doc.page_content for doc in results])
 
-    context = "\n".join([doc.page_content for doc in results]) 
-
-    prompt =  f"""
+    prompt = f"""
 You are an AI assistant for Pentaverse.
 
 Answer the user's question using ONLY the information provided in the context below.
@@ -93,11 +113,9 @@ Rules:
 Context:
 {context}
 
-Question: 
+Question:
 {question}
-"""          #--------HELPS MINIMIZE HALLUCINATION BY PROVIDING A CLEAR PROMPT WITH RULES--------
-
-
+"""
 
     response = model.generate_content(prompt)
 
@@ -106,9 +124,10 @@ Question:
         "answer": response.text,
     }
 
-
 # -------- CHAT LOOP FOR LOCAL TESTING --------
+
 if __name__ == "__main__":
+
     while True:
 
         q = input("User: ")

@@ -1,4 +1,5 @@
 from fastapi import FastAPI 
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
 from Inference import ask
@@ -9,7 +10,7 @@ class Query(BaseModel):
     question: str
 
 @app.post("/chat")
-def chat(query: Query):
+async def chat(query: Query):
 
-    return ask(query.question)
+    return await run_in_threadpool(ask,query.question)
 

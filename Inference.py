@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 import google.generativeai as genai
 import numpy as np
+import time
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -96,36 +97,40 @@ else:
 
 def ask(question):
 
-    results = vectorstore.max_marginal_relevance_search(question, k=RELEVANT_CHUNKS)
+    context = ""
 
-    context = "\n".join([doc.page_content for doc in results])
+    try:
 
-    prompt =prompt = f"""
-    You are the official AI assistant for Pentaverse.
+        results = vectorstore.max_marginal_relevance_search(question, k=RELEVANT_CHUNKS)
 
-    Your role is to help users understand Pentaverse, including information about the hackathon, participation, phases, rules, schedules, and related details.
+        context = "\n".join([doc.page_content for doc in results])
 
-    Identity and conversational behavior:
-    - If a user asks questions such as "Who are you?", "What are you?", or "What can you do?", respond that you are the Pentaverse AI assistant designed to help users with information about Pentaverse.
-    - If a user greets you (e.g., "hello", "hi", "hey"), respond politely and ask how you can assist.
+        prompt = f"""
+You are the official AI assistant for Pentaverse.
 
-    Knowledge usage rules:
-    - Answer the user's question using ONLY the information provided in the context below.
-    - Do NOT use outside knowledge.
-    - Do NOT make assumptions or fabricate details.
-    - If the information needed to answer the question is not present in the context, respond with:
-    "I don't have that information at the moment based on the available knowledge."
+Your role is to help users understand Pentaverse, including information about the hackathon, participation, phases, rules, schedules, and related details.
 
-    Context reasoning rules:
-    - Carefully read all provided context before answering.
-    - If multiple pieces of context are relevant, combine them to form a clear answer.
-    - Prefer the most relevant and specific information from the context.
+Identity and conversational behavior:
+- If a user asks questions such as "Who are you?", "What are you?", or "What can you do?", respond that you are the Pentaverse AI assistant designed to help users with information about Pentaverse.
+- If a user greets you (e.g., "hello", "hi", "hey"), respond politely and ask how you can assist.
 
-    Response style guidelines:
-    - Keep answers concise, clear, and informative.
-    - Use complete sentences.
-    - Avoid mentioning the context, documents, or retrieval process.
-    - Avoid speculation or guesses.
+Knowledge usage rules:
+- Answer the user's question using ONLY the information provided in the context below.
+- Do NOT use outside knowledge.
+- Do NOT make assumptions or fabricate details.
+- If the information needed to answer the question is not present in the context, respond with:
+"I don't have that information at the moment based on the available knowledge."
+
+Context reasoning rules:
+- Carefully read all provided context before answering.
+- If multiple pieces of context are relevant, combine them to form a clear answer.
+- Prefer the most relevant and specific information from the context.
+
+Response style guidelines:
+- Keep answers concise, clear, and informative.
+- Use complete sentences.
+- Avoid mentioning the context, documents, or retrieval process.
+- Avoid speculation or guesses.
 
 Context:
 {context}
@@ -134,12 +139,40 @@ Question:
 {question}
 """
 
-    response = model.generate_content(prompt)
+        # -------- RETRY GEMINI CALL --------
 
-    return {
-        "question": question,
-        "answer": response.text,
-    }
+        for attempt in range(3):
+
+            try:
+
+                response = model.generate_content(prompt)
+
+                return {
+                    "question": question,
+                    "answer": response.text,
+                }
+
+            except Exception:
+
+                if attempt < 2:
+                    time.sleep(2)
+                else:
+                    raise
+
+    except Exception:
+
+        # -------- GRACEFUL DEGRADATION --------
+
+        return {
+            "question": question,
+            "answer": f"""
+The AI model is temporarily unavailable.
+
+Here is relevant information retrieved from the Pentaverse knowledge base:
+
+{context}
+"""
+        }
 
 # -------- CHAT LOOP FOR LOCAL TESTING --------
 

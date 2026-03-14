@@ -1,0 +1,51 @@
+Byte-code files
+
+pycache/
+*.pyc
+*.pyo
+*.pyd
+
+Virtual environment
+
+venv/
+.venv/
+env/
+ENV/
+
+Python packaging
+
+build/
+dist/
+*.egg-info/
+
+Jupyter / notebooks
+
+.ipynb_checkpoints/
+
+IDE-specific files
+
+.idea/
+.vscode/
+
+Git
+
+.git/
+.gitignore
+
+Logs
+
+*.log
+
+Environment variables
+
+.env
+
+OS files
+
+.DS_Store
+Thumbs.db
+
+Misc
+
+*.tmp
+*.swp

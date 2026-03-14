@@ -14,3 +14,4 @@ async def chat(query: Query):
 
     return await run_in_threadpool(ask,query.question)
 
+
